@@ -166,7 +166,7 @@ function render(key,data){
 async function load(){
   const btn=document.getElementById('btn');
   btn.disabled=true;btn.textContent='⟳  Searching…';
-  document.getElementById('lu').textContent='Searching 40+ sources (30-45 seconds)…';
+  document.getElementById('lu').textContent='Searching 40+ sources (10-20 seconds)…';
   ['bhagwat','hosabale'].forEach(k=>{
     document.getElementById('b-'+k).innerHTML=
       '<div class="status"><div class="loader"><i></i><i></i><i></i></div><br>Searching last 7 days across 40+ sources…<br><span style="font-size:9.5px;opacity:.6">WSJ · NYT · Guardian · FT · Organiser · ANI · NDTV + more</span></div>';
@@ -180,7 +180,7 @@ async function load(){
     } else {
       ['bhagwat','hosabale'].forEach(k=>render(k,data.people?.[k]));
     }
-    document.getElementById('lu').textContent='Last refreshed: '+new Date(data.generatedAt||Date.now()).toLocaleString('en-IN')+(data.cached?'  (saved copy, max 15 min old — protects search quota)':'');
+    document.getElementById('lu').textContent='Last refreshed: '+new Date(data.generatedAt||Date.now()).toLocaleString('en-IN')+(data.cached?'  (saved copy, max 5 min old)':'')+(data.dailyUpdatedAt?'  ·  Daily deep search: '+new Date(data.dailyUpdatedAt).toLocaleString('en-IN'):'');
   }catch(e){
     ['bhagwat','hosabale'].forEach(k=>{document.getElementById('b-'+k).innerHTML=`<div class="status">Error: ${esc(e.message)}<br>Try refreshing again.</div>`;});
     document.getElementById('lu').textContent='Failed — try again';

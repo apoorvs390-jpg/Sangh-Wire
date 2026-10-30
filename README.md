@@ -1,29 +1,23 @@
 # Sangh Wire
 
-News wire for Dr. Mohan Bhagwat and Dattatreya Hosabale: last 7 days of English and Hindi coverage via SerpAPI Google News.
+News wire for Dr. Mohan Bhagwat and Dattatreya Hosabale: last 7 days of English and Hindi coverage. Free to run.
 
-- `index.html` is the page
-- `api/news.js` is the serverless function that runs the searches (served at `/api/news`)
-- `netlify/functions/news.mjs` + `netlify.toml` make it run on Netlify too
+## How it gets news
+1. **Every Refresh:** 31 Google News RSS searches (free, unlimited, no key), merged and de-duplicated.
+2. **Once a day (6:00 AM IST):** a GitHub Action runs 8 SerpAPI searches (fits the free 250/month plan) and saves them to `data/serp.json`. Every Refresh mixes these in. Clicking Refresh never uses SerpAPI searches.
 
-## Deploy (GitHub → Vercel)
+## Files
+- `index.html`: the page
+- `api/news.js`: the news function (served at `/api/news`)
+- `lib/shared.js`: people, name spellings and search queries (edit here to change searches)
+- `netlify/functions/news.mjs` + `netlify.toml`: make it run on Netlify too
+- `scripts/serp-daily.mjs` + `.github/workflows/serp-daily.yml`: the daily SerpAPI job
+- `data/serp.json`: daily SerpAPI results (updated automatically)
 
-1. Push these files to a GitHub repo (keep the folder structure: `api/news.js` must stay inside `api/`).
-2. On vercel.com: **Add New → Project → Import** the repo. Framework preset: **Other**. Leave build settings empty.
-3. **Settings → Environment Variables** → add `SERPAPI_KEY` = your SerpAPI key (all environments).
-4. **Deployments → Redeploy** so the key takes effect.
-
-Every push to `main` redeploys automatically. Never commit the API key to the repo.
-
-## Deploy (GitHub → Netlify)
-
-The same repo also works on Netlify.
-
-1. On netlify.com: **Add new site → Import an existing project** and choose the GitHub repo. Leave the build command empty and set the publish directory to `.`.
-2. **Site configuration → Environment variables** → add `SERPAPI_KEY`.
-3. **Deploys → Trigger deploy**.
-
-`netlify.toml` points `/api/news` to the Netlify function, which reuses `api/news.js`, so both hosts run the same code.
+## One-time setup
+1. **GitHub secret:** repo → Settings → Secrets and variables → Actions → New repository secret. Set Name to `SERPAPI_KEY` and Value to your SerpAPI key.
+2. **Test the daily job:** repo → Actions → "Daily SerpAPI news" → Run workflow. It should finish green and update `data/serp.json`.
+3. Netlify and Vercel need no API key now. They redeploy automatically whenever the daily job updates the file.
 
 ## Quota note
-One full refresh is about 24 SerpAPI searches. Results are cached for about 15 minutes per running instance, but a cold start can search again. Watch your usage on the SerpAPI dashboard.
+8 searches × 31 days = 248 per month, just under the free 250. Each extra manual "Run workflow" uses 8 more.
