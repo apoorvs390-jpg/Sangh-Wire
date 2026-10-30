@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sangh Wire — RSS Leadership Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f2ee;--surf:#fff;--surf2:#f0ede8;--line:#ddd9d0;--ink:#1a1814;--muted:#6b6560;--accent:#b5470f;--blue:#1a5f8a;--bs:rgba(26,95,138,.1);--green:#1e7a4a;--gs:rgba(30,122,74,.1);--orange:#c47200;--os:rgba(196,114,0,.1);--purple:#6b3fa0;--ps:rgba(107,63,160,.1);--red:#b5470f;--rs:rgba(181,71,15,.1);--r:4px;--shadow:0 2px 8px rgba(0,0,0,.07)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1320px;margin:0 auto;padding:28px 20px 80px}
+header{border-bottom:2px solid var(--line);padding-bottom:20px;margin-bottom:24px}
+.top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.eyebrow{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent)}
+.clock{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.ldot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2.4s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(30,122,74,.5)}70%{box-shadow:0 0 0 7px rgba(30,122,74,0)}100%{box-shadow:0 0 0 0 rgba(30,122,74,0)}}
+h1{font-family:'Source Serif 4',serif;font-weight:700;font-size:clamp(28px,5vw,46px);line-height:1.06;margin-bottom:6px}
+.sub{color:var(--muted);font-size:13px;line-height:1.65;max-width:700px;margin-bottom:12px}
+.scope{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);border-left:3px solid var(--line);padding-left:10px;line-height:1.9}
+.controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+#btn{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.07em;text-transform:uppercase;background:var(--accent);color:#fff;border:none;padding:10px 22px;border-radius:var(--r);cursor:pointer;font-weight:600;box-shadow:0 2px 6px rgba(181,71,15,.25);transition:background .18s,transform .1s}
+#btn:hover{background:#9a3a08}#btn:active{transform:scale(.97)}#btn:disabled{opacity:.45;cursor:wait}
+.lastup{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)}
+.board{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:900px){.board{grid-template-columns:1fr}}
+.col{background:var(--surf);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
+.col-head{padding:14px 18px;border-bottom:2px solid var(--line);background:var(--surf2)}
+.col-head h2{font-family:'Source Serif 4',serif;font-size:20px;font-weight:700;margin-bottom:2px}
+.col-head .role{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.sec{border-bottom:1px solid var(--line)}.sec:last-child{border-bottom:none}
+.sec-h{display:flex;align-items:center;gap:7px;padding:9px 16px;background:var(--surf2);border-bottom:1px solid var(--line);cursor:pointer;user-select:none}
+.sec-h:hover{background:#e8e4de}
+.sec-h h3{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink);flex:1;font-weight:600}
+.cnt{font-family:'IBM Plex Mono',monospace;font-size:9px;background:var(--line);color:var(--muted);padding:2px 7px;border-radius:10px}
+.arr{font-size:10px;color:var(--muted)}
+.sec-b.hidden{display:none}
+.card{padding:13px 16px 12px 21px;border-bottom:1px solid var(--line);position:relative;background:var(--surf)}
+.card:hover{background:#faf8f5}.card:last-child{border-bottom:none}
+.card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:2px 0 0 2px}
+.c-all::before{background:#888}
+.c-sp::before{background:var(--blue)}
+.c-pr::before{background:var(--green)}
+.c-iv::before{background:var(--purple)}
+.c-hi::before{background:var(--orange)}
+.c-og::before{background:var(--red)}
+.badges{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:6px}
+.badge{display:inline-block;padding:2px 6px;border-radius:3px;font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.04em;text-transform:uppercase;font-weight:600}
+.b-all{background:#eee;color:#555;border:1px solid #ddd}
+.b-sp{background:var(--bs);color:var(--blue);border:1px solid rgba(26,95,138,.2)}
+.b-pr{background:var(--gs);color:var(--green);border:1px solid rgba(30,122,74,.2)}
+.b-iv{background:var(--ps);color:var(--purple);border:1px solid rgba(107,63,160,.2)}
+.b-hi{background:var(--os);color:var(--orange);border:1px solid rgba(196,114,0,.2)}
+.b-og{background:var(--rs);color:var(--red);border:1px solid rgba(181,71,15,.2)}
+.b-src{background:rgba(181,71,15,.08);color:var(--accent);border:1px solid rgba(181,71,15,.15);font-size:8px}
+.b-age{background:var(--surf2);color:var(--muted);border:1px solid var(--line);font-size:8px}
+.card-title{font-family:'Source Serif 4',serif;font-size:14px;line-height:1.42;color:var(--ink);margin-bottom:5px;font-weight:600}
+.card-title a{color:var(--ink)}.card-title a:hover{color:var(--accent)}
+.snippet{font-size:11.5px;color:var(--muted);line-height:1.5;margin-bottom:5px}
+.also{font-size:9px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-top:4px}
+.also a{color:var(--accent);font-size:9px}
+.status{padding:30px 18px;text-align:center;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.9}
+.loader{display:inline-flex;gap:4px;margin-bottom:10px}
+.loader i{width:4px;height:14px;background:var(--accent);display:inline-block;border-radius:2px;animation:tk 1s infinite ease-in-out}
+.loader i:nth-child(2){animation-delay:.15s}.loader i:nth-child(3){animation-delay:.3s}
+@keyframes tk{0%,100%{transform:scaleY(.3);opacity:.3}50%{transform:scaleY(1);opacity:1}}
+.legend{margin-top:16px;background:var(--surf);border:1px solid var(--line);border-radius:var(--r);padding:10px 16px;font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;box-shadow:var(--shadow)}
+.leg{display:flex;align-items:center;gap:5px}
+.leg-dot{width:9px;height:9px;border-radius:2px}
+footer{margin-top:30px;padding-top:14px;border-top:1px solid var(--line);font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);line-height:1.9}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="top">
+    <span class="eyebrow">Public Programs & Speeches Wire — RSS Leadership</span>
+    <div class="clock"><span class="ldot"></span><span id="clk">—</span></div>
+  </div>
+  <h1>Sangh Wire</h1>
+  <p class="sub">Latest news, speeches, programs, interviews and RSS events for Dr. Mohan Bhagwat and Dattatreya Hosabale — from 40+ national, international and RSS-affiliated sources. Last 7 days only.</p>
+  <div class="scope">
+    OWNED BY: Apoorv &nbsp;|&nbsp; SOURCES: Organiser · Panchjanya · ANI · NDTV · The Hindu · TOI · WSJ · NYT · Guardian · FT · WashPost · Economic Times + 30 more<br>
+    Results filtered to last 7 days · Duplicate events merged · No private tracking
+  </div>
+</header>
+<div class="controls">
+  <button id="btn" onclick="load()">⟳ &nbsp;Refresh Wire</button>
+  <span class="lastup" id="lu">Not loaded — click Refresh</span>
+</div>
+<div class="board">
+  <div class="col">
+    <div class="col-head"><h2>Dr. Mohan Bhagwat</h2><div class="role">Sarsanghchalak (Chief) — Rashtriya Swayamsevak Sangh</div></div>
+    <div id="b-bhagwat"><div class="status">Click Refresh Wire to load.</div></div>
+  </div>
+  <div class="col">
+    <div class="col-head"><h2>Dattatreya Hosabale</h2><div class="role">Sarkaryavah (Gen. Secretary) — Rashtriya Swayamsevak Sangh</div></div>
+    <div id="b-hosabale"><div class="status">Click Refresh Wire to load.</div></div>
+  </div>
+</div>
+<div class="legend">
+  <div class="leg"><div class="leg-dot" style="background:#888"></div>All Latest News</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--blue)"></div>Speeches & Statements</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--green)"></div>Programs & Visits</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--purple)"></div>Interviews & Podcasts</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--orange)"></div>Hindi News</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--red)"></div>RSS Events & Meetings</div>
+</div>
+<footer>Sangh Wire — Owned by Apoorv &nbsp;|&nbsp; Only publicly reported news · No private tracking · All links open original articles</footer>
+</div>
+<script>
+function tick(){document.getElementById('clk').textContent=new Date().toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});}
+setInterval(tick,1000);tick();
+const esc=s=>{const d=document.createElement('div');d.textContent=s||'';return d.innerHTML};
+function ageLabel(d){if(d===null||d===undefined)return null;const r=Math.round(d);if(r<=0)return 'today';if(r===1)return 'yesterday';if(r<2)return Math.round(d*24)+'h ago';return r+'d ago';}
+function card(item,cls,badge){
+  const age=ageLabel(item.ageDays);
+  let also='';
+  if(item.allSources&&item.allSources.length>1){
+    const links=item.allSources.filter(s=>s.name).map(s=>`<a href="${esc(s.link)}" target="_blank">${esc(s.name)}</a>`).join(' · ');
+    also=`<div class="also">Also: ${links}</div>`;
+  }
+  return `<div class="card ${cls}">
+    <div class="badges">${badge}<span class="badge b-src">${esc(item.source||'')}</span>${age?`<span class="badge b-age">${age}</span>`:''}</div>
+    <div class="card-title"><a href="${esc(item.link||'#')}" target="_blank" rel="noopener">${esc(item.title)}</a></div>
+    ${item.snippet?`<div class="snippet">${esc(item.snippet)}</div>`:''}
+    ${also}
+  </div>`;
+}
+function section(icon,label,items,cls,badge){
+  if(!items||!items.length)return '';
+  const id='s'+Math.random().toString(36).slice(2);
+  return `<div class="sec">
+    <div class="sec-h" onclick="tog('${id}',this)">
+      <span>${icon}</span><h3>${label}</h3><span class="cnt">${items.length}</span><span class="arr">▾</span>
+    </div>
+    <div class="sec-b" id="${id}">${items.map(i=>card(i,cls,badge)).join('')}</div>
+  </div>`;
+}
+function tog(id,h){const b=document.getElementById(id);b.classList.toggle('hidden');const a=h.querySelector('.arr');if(a)a.textContent=b.classList.contains('hidden')?'▸':'▾';}
+function render(key,data){
+  const el=document.getElementById('b-'+key);
+  if(!data){el.innerHTML='<div class="status">No data returned.</div>';return;}
+  if(data.error){el.innerHTML=`<div class="status">Error: ${esc(data.error)}</div>`;return;}
+  const notice=data.notice?`<div class="status" style="color:#b5470f;padding:10px 16px;font-size:10px">⚠ ${esc(data.notice)}</div>`:'';
+  const an=data.allNews||[];
+  const sp=data.speeches||[];
+  const pr=data.programs||[];
+  const iv=data.interviews||[];
+  const hi=data.hindiNews||[];
+  const og=data.orgEvents||[];
+  if(!an.length&&!sp.length&&!pr.length&&!iv.length&&!hi.length&&!og.length){
+    el.innerHTML=notice+'<div class="status">No news found in last 7 days.<br><span style="font-size:9.5px;opacity:.7">Try refreshing again in a few minutes.</span></div>';
+    return;
+  }
+  el.innerHTML=notice+
+    section('📰','All Latest News',an,'c-all','<span class="badge b-all">News</span>')+
+    section('🎙','Latest Speeches & Statements',sp,'c-sp','<span class="badge b-sp">Speech</span>')+
+    section('📅','Programs & Visits',pr,'c-pr','<span class="badge b-pr">Program</span>')+
+    section('🎤','Interviews & Podcasts',iv,'c-iv','<span class="badge b-iv">Interview</span>')+
+    section('🇮🇳','Hindi News',hi,'c-hi','<span class="badge b-hi">Hindi</span>')+
+    section('🏛','RSS Events & Meetings',og,'c-og','<span class="badge b-og">RSS Event</span>');
+}
+async function load(){
+  const btn=document.getElementById('btn');
+  btn.disabled=true;btn.textContent='⟳  Searching…';
+  document.getElementById('lu').textContent='Searching 40+ sources (30-45 seconds)…';
+  ['bhagwat','hosabale'].forEach(k=>{
+    document.getElementById('b-'+k).innerHTML=
+      '<div class="status"><div class="loader"><i></i><i></i><i></i></div><br>Searching last 7 days across 40+ sources…<br><span style="font-size:9.5px;opacity:.6">WSJ · NYT · Guardian · FT · Organiser · ANI · NDTV + more</span></div>';
+  });
+  try{
+    const r=await fetch('/api/news');
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const data=await r.json();
+    if(data.error){
+      ['bhagwat','hosabale'].forEach(k=>{document.getElementById('b-'+k).innerHTML=`<div class="status">${esc(data.error)}</div>`;});
+    } else {
+      ['bhagwat','hosabale'].forEach(k=>render(k,data.people?.[k]));
+    }
+    document.getElementById('lu').textContent='Last refreshed: '+new Date(data.generatedAt||Date.now()).toLocaleString('en-IN')+(data.cached?'  (saved copy, max 15 min old — protects search quota)':'');
+  }catch(e){
+    ['bhagwat','hosabale'].forEach(k=>{document.getElementById('b-'+k).innerHTML=`<div class="status">Error: ${esc(e.message)}<br>Try refreshing again.</div>`;});
+    document.getElementById('lu').textContent='Failed — try again';
+  }finally{
+    btn.disabled=false;btn.textContent='⟳  Refresh Wire';
+  }
+}
+</script>
+</body>
+</html>
