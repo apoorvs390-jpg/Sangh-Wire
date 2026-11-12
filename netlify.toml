@@ -10,3 +10,9 @@
   from = "/api/news"
   to = "/.netlify/functions/news"
   status = 200
+
+# Password login on Netlify (same URL as on Vercel)
+[[redirects]]
+  from = "/api/login"
+  to = "/.netlify/functions/login"
+  status = 200
