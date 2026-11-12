@@ -3,7 +3,10 @@
 // + daily SerpAPI results saved by GitHub Actions in data/serp.json (no quota used by clicks)
 // Last 7 days only. Works on Vercel (/api/news) and Netlify (netlify/functions/news.mjs).
 
+import { webcrypto } from "node:crypto";
+if (!globalThis.crypto) globalThis.crypto = webcrypto;
 import { PEOPLE, parseDate } from "../lib/shared.js";
+import { isAuthed } from "../lib/auth.js";
 
 const CACHE_TTL = 5 * 60 * 1000;   // 5 min saved copy, avoids hammering Google News
 globalThis.__SW_CACHE = globalThis.__SW_CACHE || {};
@@ -14,6 +17,13 @@ async function handler(req) {
   const json = (obj) => new Response(JSON.stringify(obj), {
     headers: { "Content-Type": "application/json", "Cache-Control": "no-store" }
   });
+
+  // password check (also done by middleware / edge function; this guards direct function URLs)
+  if (!(await isAuthed(req))) {
+    return new Response(JSON.stringify({ error: "Login required", login: true }), {
+      status: 401, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" }
+    });
+  }
 
   const url = new URL(req.url);
   const pk = url.searchParams.get("person");
@@ -84,7 +94,10 @@ async function handler(req) {
   // ---------- daily SerpAPI results (saved file, no quota used here) ----------
   let serp = null;
   try {
-    const r = await fetch(new URL(`/data/serp.json?t=${Math.floor(NOW / 600000)}`, url), { signal: AbortSignal.timeout(4000) });
+    const r = await fetch(new URL(`/data/serp.json?t=${Math.floor(NOW / 600000)}`, url), {
+      signal: AbortSignal.timeout(4000),
+      headers: { cookie: req.headers.get("cookie") || "" }, // pass the login through the password gate
+    });
     if (r.ok) serp = await r.json();
   } catch { /* file missing or unreachable — RSS alone still works */ }
 
