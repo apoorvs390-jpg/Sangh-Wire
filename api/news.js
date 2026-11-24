@@ -107,7 +107,7 @@ async function handler(req) {
         out.push({
           title, link: tag(b, "link") || "#", pubDate, source: host,
           ageDays: ageDays(pubDate), snippet: desc.slice(0, 300) || null,
-          _text: `${title} ${desc} ${full}`.slice(0, 8000), // full article text is used only for name matching
+          _text: `${title} ${desc} ${full.slice(0, 800)}`, // name must appear in the headline or opening of the article
         });
       }
       return out;
@@ -158,13 +158,14 @@ async function handler(req) {
   }
 
   // ---------- de-duplication ----------
-  const STOP = new Set(["a","an","the","in","on","at","to","of","for","and","or","is","are","was","were","by","with","be","been","has","have","had","will","says","said","rss","news","india"]);
+  const STOP = new Set(["a","an","the","in","on","at","to","of","for","and","or","is","are","was","were","by","with","be","been","has","have","had","will","says","said","rss","news","india",
+    "mohan","bhagwat","bhagvat","dattatreya","dattatrey","hosabale","hosbale","sarsanghchalak","sarkaryavah","chief","ji","dr","मोहन","भागवत","दत्तात्रेय","होसबाले","होसबोले","सरसंघचालक","सरकार्यवाह","संघ","प्रमुख"]);
   const slug = (t) => t.toLowerCase().replace(/[^\w\sऀ-ॿ]/g, " ").split(/\s+/).filter((w) => w.length > 2 && !STOP.has(w));
   function sim(a, b) {
     const sa = new Set(slug(a)), sb = new Set(slug(b));
     if (!sa.size || !sb.size) return 0;
     let c = 0; for (const w of sa) if (sb.has(w)) c++;
-    return c / Math.min(sa.size, sb.size);
+    return c >= 3 ? c / Math.min(sa.size, sb.size) : 0; // need 3+ shared story words, so different stories are not merged
   }
   function dedupe(items) {
     const groups = [];
@@ -204,7 +205,7 @@ async function handler(req) {
 
     result[key] = {
       label: p.label, role: p.role,
-      allNews:    dedupe(unique).slice(0, 30),
+      allNews:    dedupe(unique).slice(0, 50),
       speeches:   pick((i) => isSpeech(i, p), 15),
       programs:   pick((i) => has(i.title.toLowerCase(), PROGRAM_KW), 12),
       interviews: pick((i) => has(i.title.toLowerCase(), INTERVIEW_KW), 10),
