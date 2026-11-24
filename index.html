@@ -131,14 +131,14 @@ function card(item,cls,badge){
     ${also}
   </div>`;
 }
-function section(icon,label,items,cls,badge){
+function section(icon,label,items,cls,badge,collapsed){
   if(!items||!items.length)return '';
   const id='s'+Math.random().toString(36).slice(2);
   return `<div class="sec">
     <div class="sec-h" onclick="tog('${id}',this)">
-      <span>${icon}</span><h3>${label}</h3><span class="cnt">${items.length}</span><span class="arr">▾</span>
+      <span>${icon}</span><h3>${label}</h3><span class="cnt">${items.length}</span><span class="arr">${collapsed?'▸':'▾'}</span>
     </div>
-    <div class="sec-b" id="${id}">${items.map(i=>card(i,cls,badge)).join('')}</div>
+    <div class="sec-b${collapsed?' hidden':''}" id="${id}">${items.map(i=>card(i,cls,badge)).join('')}</div>
   </div>`;
 }
 function tog(id,h){const b=document.getElementById(id);b.classList.toggle('hidden');const a=h.querySelector('.arr');if(a)a.textContent=b.classList.contains('hidden')?'▸':'▾';}
@@ -146,7 +146,7 @@ function render(key,data){
   const el=document.getElementById('b-'+key);
   if(!data){el.innerHTML='<div class="status">No data returned.</div>';return;}
   if(data.error){el.innerHTML=`<div class="status">Error: ${esc(data.error)}</div>`;return;}
-  const notice=data.notice?`<div class="status" style="color:#b5470f;padding:10px 16px;font-size:10px">⚠ ${esc(data.notice)}</div>`:'';
+  const notice='';
   const st=data.stats||{};
   const srcLine=st.sourcesSeen?`<div class="status" style="padding:4px 16px 8px;font-size:9.5px;opacity:.75;text-align:left">Searches finished ${st.finished!=null?st.finished+"/"+st.totalSearches:st.rssQueries} · found ${st.rssItems+st.dailyItems} items · kept ${st.afterNameFilter} · sites returning results: ${st.sourcesSeen.length?st.sourcesSeen.slice(0,12).map(x=>esc(x[0])+' '+x[1]).join(', '):'none'}</div>`:'';
   const an=data.allNews||[];
@@ -165,7 +165,8 @@ function render(key,data){
     section('📅','Programs & Visits',pr,'c-pr','<span class="badge b-pr">Program</span>')+
     section('🎤','Interviews & Podcasts',iv,'c-iv','<span class="badge b-iv">Interview</span>')+
     section('🇮🇳','Hindi News',hi,'c-hi','<span class="badge b-hi">Hindi</span>')+
-    section('🏛','RSS Events & Meetings',og,'c-og','<span class="badge b-og">RSS Event</span>');
+    section('🏛','RSS Events & Meetings',og,'c-og','<span class="badge b-og">RSS Event</span>')+
+    (data.bySource&&data.bySource.length?'<div class="status" style="text-align:left;padding:10px 16px 2px;font-size:10px;letter-spacing:.08em">BY SOURCE — every outlet separately</div>'+data.bySource.map(g=>section('🌐',esc(g.name),g.items,'c-all','<span class="badge b-all">News</span>',true)).join(''):'');
 }
 // show "पासवर्ड बदलें" only on the admin system
 fetch('/auth/status').then(r=>r.ok?r.json():null).then(j=>{if(j&&(j.admin||!j.adminSet))document.getElementById('chg').style.display='inline';}).catch(()=>{});
