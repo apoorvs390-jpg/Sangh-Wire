@@ -49,16 +49,47 @@ async function handler(req) {
     return m ? decode(m[1]).trim() : null;
   };
 
+  // Google answers 429 when asked too fast: wait a little and try again
+  async function fetchRetry(url, headers) {
+    let r;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      r = await fetch(url, { signal: AbortSignal.timeout(8000), headers });
+      if (r.status !== 429 && r.status !== 503) return r;
+      await new Promise((res) => setTimeout(res, 1200 * (attempt + 1)));
+    }
+    return r;
+  }
+
+  // ---------- Bing News RSS (second engine) ----------
+  async function searchBing(q, hl, errors, trust = false) {
+    const params = new URLSearchParams({ q, format: "rss", setmkt: hl === "hi" ? "hi-IN" : "en-IN", qft: 'interval="8"' });
+    try {
+      const r = await fetchRetry(`https://www.bing.com/news/search?${params}`, { "User-Agent": "Mozilla/5.0 (compatible; SanghWire/1.0)" });
+      if (!r.ok) { errors.push(`Bing HTTP ${r.status}`); return []; }
+      const xml = await r.text();
+      const out = [];
+      for (const m of xml.matchAll(/<item>([\s\S]*?)<\/item>/g)) {
+        const b = m[1];
+        const title = (tag(b, "title") || "").trim();
+        const pubDate = tag(b, "pubDate");
+        if (!title || !isRecent(pubDate)) continue;
+        let link = tag(b, "link") || "#";
+        try { const u = new URL(link).searchParams.get("url"); if (u) link = u; } catch {}
+        const desc = (tag(b, "description") || "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+        out.push({ title, link, pubDate, source: tag(b, "News:Source") || null, ageDays: ageDays(pubDate),
+          snippet: desc.slice(0, 300) || null, trusted: trust, _text: `${title} ${desc}` });
+      }
+      return out;
+    } catch (e) { errors.push(`Bing: ${String(e.message || e).slice(0, 80)}`); return []; }
+  }
+
   async function searchRss(q, hl, errors, trust = false) {
     const lang = hl === "hi"
       ? { hl: "hi", gl: "IN", ceid: "IN:hi" }
       : { hl: "en-IN", gl: "IN", ceid: "IN:en" };
     const params = new URLSearchParams({ q, ...lang });
     try {
-      const r = await fetch(`https://news.google.com/rss/search?${params}`, {
-        signal: AbortSignal.timeout(8000),
-        headers: { "User-Agent": "Mozilla/5.0 (compatible; SanghWire/1.0)" },
-      });
+      const r = await fetchRetry(`https://news.google.com/rss/search?${params}`, { "User-Agent": "Mozilla/5.0 (compatible; SanghWire/1.0)" });
       if (!r.ok) { errors.push(`Google News HTTP ${r.status}`); return []; }
       const xml = await r.text();
       const out = [];
@@ -120,12 +151,14 @@ async function handler(req) {
   // Run searches in small batches (Google throttles big bursts) inside a time budget.
   // Vercel allows 30s for this function (see vercel.json); Netlify's default is 10s, so keep it short there.
   const BUDGET_MS = process.env.VERCEL ? 22000 : 8500;
-  const POOL = 8;
-  async function runQueries(queries, errors, siteTerms = [], prog = {}) {
+  const POOL = 5;
+  async function runQueries(queries, errors, siteTerms = [], prog = {}, bingQueries = []) {
     const collected = [];
     const tasks = [];
     for (const { q, hl, trust } of queries)
       tasks.push(() => searchRss(q, hl, errors, !!trust).then((r) => { collected.push(...r); }));
+    for (const { q, hl, trust } of bingQueries)
+      tasks.push(() => searchBing(q, hl, errors, !!trust).then((r) => { collected.push(...r); }));
     for (const base of DIRECT_SITES) for (const term of siteTerms)
       tasks.push(() => searchSite(base, term, errors).then((r) => { collected.push(...r); }));
     prog.total = tasks.length; prog.done = 0;
@@ -214,27 +247,29 @@ async function handler(req) {
   await Promise.all(Object.entries(targets).map(async ([key, p]) => {
     const errors = [];
     const prog = {};
-    const rss = await runQueries(p.rssQueries, errors, p.feedTerms || [], prog);
+    const rss = await runQueries(p.rssQueries, errors, p.feedTerms || [], prog, p.bingQueries || []);
     const daily = ((serp && serp.people && serp.people[key]) || [])
       .filter((i) => i && i.title && isRecent(i.pubDate))
       .map((i) => ({ ...i, ageDays: ageDays(i.pubDate) }));
     const raw = [...rss, ...daily];
     const matched = raw.filter((i) => matchesPerson(i, p)).map(({ _text, trusted, ...rest }) => rest);
     const unique = urlDedupe(matched).sort((a, b) => (a.ageDays ?? 999) - (b.ageDays ?? 999));
-    const pick = (fn, n) => dedupe(unique.filter(fn)).slice(0, n);
+    const pick = (fn, n) => unique.filter(fn).slice(0, n);   // no merging: every article from every source is shown
 
     result[key] = {
       label: p.label, role: p.role,
-      allNews:    dedupe(unique).slice(0, 50),
-      speeches:   pick((i) => isSpeech(i, p), 15),
-      programs:   pick((i) => has(i.title.toLowerCase(), PROGRAM_KW), 12),
-      interviews: pick((i) => has(i.title.toLowerCase(), INTERVIEW_KW), 10),
-      hindiNews:  pick((i) => /[ऀ-ॿ]/.test(i.title), 15),
-      orgEvents:  pick((i) => has(i.title.toLowerCase(), ORG_KW), 12),
+      allNews:    unique.slice(0, 400),
+      bySource:   Object.entries(unique.reduce((o, i) => { const k = i.source || "Other"; (o[k] = o[k] || []).push(i); return o; }, {}))
+                    .sort((a, b) => b[1].length - a[1].length).map(([name, items]) => ({ name, items: items.slice(0, 40) })),
+      speeches:   pick((i) => isSpeech(i, p), 100),
+      programs:   pick((i) => has(i.title.toLowerCase(), PROGRAM_KW), 100),
+      interviews: pick((i) => has(i.title.toLowerCase(), INTERVIEW_KW), 100),
+      hindiNews:  pick((i) => /[ऀ-ॿ]/.test(i.title), 100),
+      orgEvents:  pick((i) => has(i.title.toLowerCase(), ORG_KW), 100),
       notice: errors.length > 0
         ? `${errors.length} of ${p.rssQueries.length + DIRECT_SITES.length * (p.feedTerms || []).length} searches failed: ${[...new Set(errors)].slice(0, 3).join(" | ")}` : null,
       stats: {
-        finished: prog.done, totalSearches: prog.total, rssQueries: p.rssQueries.length, directSiteSearches: DIRECT_SITES.length * (p.feedTerms || []).length,
+        finished: prog.done, totalSearches: prog.total, rssQueries: p.rssQueries.length, directSiteSearches: DIRECT_SITES.length * (p.feedTerms || []).length, bingQueries: (p.bingQueries || []).length,
         rssItems: rss.length, dailyItems: daily.length, afterNameFilter: matched.length, uniqueItems: unique.length,
         // open /api/news?person=bhagwat&fresh=1 and look here to see WHY something is missing
         sourcesSeen: Object.entries(raw.reduce((o, i) => { const k = i.source || "?"; o[k] = (o[k] || 0) + 1; return o; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 25),
