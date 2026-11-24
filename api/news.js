@@ -1,7 +1,7 @@
 // Sangh Wire — news function
 // Free & unlimited: Google News RSS on every Refresh (no API key needed)
 // + daily SerpAPI results saved by GitHub Actions in data/serp.json (no quota used by clicks)
-// Last 7 days only. Works on Vercel (/api/news) and Netlify (netlify/functions/news.mjs).
+// Last 7 days by default (page can choose 15 or 30). Works on Vercel (/api/news) and Netlify (netlify/functions/news.mjs).
 
 import { webcrypto } from "node:crypto";
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
@@ -13,7 +13,9 @@ globalThis.__SW_CACHE = globalThis.__SW_CACHE || {};
 
 async function handler(req) {
   const NOW = Date.now();
-  const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+  // time window chosen on the page: 7, 15 or 30 days (default 7)
+  const DAYS = [7, 15, 30].includes(+new URL(req.url).searchParams.get("days")) ? +new URL(req.url).searchParams.get("days") : 7;
+  const MAX_AGE_MS = DAYS * 24 * 60 * 60 * 1000;
   const json = (obj) => new Response(JSON.stringify(obj), {
     headers: { "Content-Type": "application/json", "Cache-Control": "no-store" }
   });
@@ -28,7 +30,7 @@ async function handler(req) {
   const url = new URL(req.url);
   const pk = url.searchParams.get("person");
   const fresh = url.searchParams.get("fresh") === "1";
-  const cacheKey = pk || "all";
+  const cacheKey = (pk || "all") + ":" + DAYS;
   const hit = globalThis.__SW_CACHE[cacheKey];
   if (hit && !fresh && NOW - hit.ts < CACHE_TTL) {
     return json({ ...hit.payload, cached: true });
@@ -62,7 +64,7 @@ async function handler(req) {
 
   // ---------- Bing News RSS (second engine) ----------
   async function searchBing(q, hl, errors, trust = false) {
-    const params = new URLSearchParams({ q, format: "rss", setmkt: hl === "hi" ? "hi-IN" : "en-IN", qft: 'interval="8"' });
+    const params = new URLSearchParams({ q, format: "rss", setmkt: hl === "hi" ? "hi-IN" : "en-IN", qft: DAYS <= 7 ? 'interval="8"' : 'interval="9"' });
     try {
       const r = await fetchRetry(`https://www.bing.com/news/search?${params}`, { "User-Agent": "Mozilla/5.0 (compatible; SanghWire/1.0)" });
       if (!r.ok) { errors.push(`Bing HTTP ${r.status}`); return []; }
@@ -87,7 +89,7 @@ async function handler(req) {
     const lang = hl === "hi"
       ? { hl: "hi", gl: "IN", ceid: "IN:hi" }
       : { hl: "en-IN", gl: "IN", ceid: "IN:en" };
-    const params = new URLSearchParams({ q, ...lang });
+    const params = new URLSearchParams({ q: q.replace(/when:7d/g, `when:${DAYS}d`), ...lang });
     try {
       const r = await fetchRetry(`https://news.google.com/rss/search?${params}`, { "User-Agent": "Mozilla/5.0 (compatible; SanghWire/1.0)" });
       if (!r.ok) { errors.push(`Google News HTTP ${r.status}`); return []; }
@@ -278,7 +280,7 @@ async function handler(req) {
     };
   }));
 
-  const payload = { generatedAt: new Date().toISOString(), dailyUpdatedAt: (serp && serp.updatedAt) || null, people: result };
+  const payload = { days: DAYS, generatedAt: new Date().toISOString(), dailyUpdatedAt: (serp && serp.updatedAt) || null, people: result };
   const total = Object.values(result).reduce((n, r) => n + r.allNews.length, 0);
   if (total > 0) globalThis.__SW_CACHE[cacheKey] = { ts: NOW, payload };
   return json(payload);
