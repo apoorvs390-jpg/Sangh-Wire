@@ -146,8 +146,11 @@ async function handler(req) {
   const has = (lo, list) => list.some((k) => lo.includes(k));
 
   function matchesPerson(it, p) {
+    let lo = (it._text || (it.title + " " + (it.snippet || ""))).toLowerCase();
+    // "Sah-Sarkaryavah" / joint general secretary is a different office-bearer, not the Sarkaryavah
+    lo = lo.replace(/sah[\s-]*sar[ak]*ary?a?w?ah|sah[\s-]*sarkaryavah|सह[\s-]*सरकार्यवाह|joint general secretary|joint gen\.? sec\w*/g, " ");
+    if (p.key === "hosabale" && /sarkarya(v|w)ah|सरकार्यवाह/.test(lo)) return true;
     if (it.trusted) return true;
-    const lo = (it._text || (it.title + " " + (it.snippet || ""))).toLowerCase();
     if (has(lo, p.strong)) return true;
     return p.weak.length > 0 && has(lo, p.weak) && has(lo, p.weakNeeds);
   }
@@ -189,7 +192,7 @@ async function handler(req) {
   const urlDedupe = (arr) => { const seen = new Set(); return arr.filter((i) => { const k = (i.link || "").split("?")[0]; return seen.has(k) ? false : (seen.add(k), true); }); };
 
   // ---------- run ----------
-  const targets = pk && PEOPLE[pk] ? { [pk]: PEOPLE[pk] } : PEOPLE;
+  const targets = pk && PEOPLE[pk] ? { [pk]: { ...PEOPLE[pk], key: pk } } : Object.fromEntries(Object.entries(PEOPLE).map(([k, v]) => [k, { ...v, key: k }]));
   const result = {};
 
   await Promise.all(Object.entries(targets).map(async ([key, p]) => {
