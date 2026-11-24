@@ -147,6 +147,8 @@ function render(key,data){
   if(!data){el.innerHTML='<div class="status">No data returned.</div>';return;}
   if(data.error){el.innerHTML=`<div class="status">Error: ${esc(data.error)}</div>`;return;}
   const notice=data.notice?`<div class="status" style="color:#b5470f;padding:10px 16px;font-size:10px">⚠ ${esc(data.notice)}</div>`:'';
+  const st=data.stats||{};
+  const srcLine=st.sourcesSeen?`<div class="status" style="padding:4px 16px 8px;font-size:9.5px;opacity:.75;text-align:left">Searched ${st.rssQueries+(st.directSiteSearches||0)} · found ${st.rssItems+st.dailyItems} items · kept ${st.afterNameFilter} · sites returning results: ${st.sourcesSeen.length?st.sourcesSeen.slice(0,12).map(x=>esc(x[0])+' '+x[1]).join(', '):'none'}</div>`:'';
   const an=data.allNews||[];
   const sp=data.speeches||[];
   const pr=data.programs||[];
@@ -154,10 +156,10 @@ function render(key,data){
   const hi=data.hindiNews||[];
   const og=data.orgEvents||[];
   if(!an.length&&!sp.length&&!pr.length&&!iv.length&&!hi.length&&!og.length){
-    el.innerHTML=notice+'<div class="status">No news found in last 7 days.<br><span style="font-size:9.5px;opacity:.7">Try refreshing again in a few minutes.</span></div>';
+    el.innerHTML=notice+srcLine+'<div class="status">No news found in last 7 days.<br><span style="font-size:9.5px;opacity:.7">Try refreshing again in a few minutes.</span></div>';
     return;
   }
-  el.innerHTML=notice+
+  el.innerHTML=notice+srcLine+
     section('📰','All Latest News',an,'c-all','<span class="badge b-all">News</span>')+
     section('🎙','Latest Speeches & Statements',sp,'c-sp','<span class="badge b-sp">Speech</span>')+
     section('📅','Programs & Visits',pr,'c-pr','<span class="badge b-pr">Program</span>')+
