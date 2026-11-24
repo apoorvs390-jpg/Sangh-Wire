@@ -3,7 +3,7 @@
 News wire for Dr. Mohan Bhagwat and Dattatreya Hosabale: last 7 days of English and Hindi coverage. Free to run.
 
 ## How it gets news
-1. **Every Refresh:** 31 Google News RSS searches (free, unlimited, no key), merged and de-duplicated.
+1. **Every Refresh:** ~40 Google News RSS searches per person (free, no key) **plus a direct search on each site listed in `DIRECT_SITES`** (`lib/shared.js`), merged and de-duplicated. Direct site search finds articles even if Google News does not index that site, and matches the name anywhere in the article text, not just the headline.
 2. **Once a day (6:00 AM IST):** a GitHub Action runs 8 SerpAPI searches (fits the free 250/month plan) and saves them to `data/serp.json`. Every Refresh mixes these in. Clicking Refresh never uses SerpAPI searches.
 
 ## 🔒 Password protection
@@ -36,3 +36,7 @@ The whole site (page, news API, data file) is locked behind one password, on bot
 
 ## Quota note
 8 searches × 31 days = 248 per month, just under the free 250. Each extra manual "Run workflow" uses 8 more.
+
+
+## Debugging missing news
+Open `/api/news?person=bhagwat&fresh=1` (while logged in) and read `stats`: `sourcesSeen` shows which sites returned anything, `errors` shows blocked/failed sites, `afterNameFilter` shows how many items survived the name filter.
