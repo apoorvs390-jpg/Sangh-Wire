@@ -69,7 +69,8 @@ async function handler(req) {
         if (source && title.endsWith(` - ${source}`)) title = title.slice(0, -(source.length + 3));
         const pubDate = tag(b, "pubDate");
         if (!title || !isRecent(pubDate)) continue;
-        const snippet = (tag(b, "description") || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+        let snippet = (tag(b, "description") || "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+        if (snippet.includes(title.slice(0, 40))) snippet = ""; // Google just repeats the headline here
         out.push({
           title: title.trim(), link: tag(b, "link") || "#", pubDate, source,
           ageDays: ageDays(pubDate), snippet: snippet || null, trusted: trust,
@@ -209,8 +210,8 @@ async function handler(req) {
       interviews: pick((i) => has(i.title.toLowerCase(), INTERVIEW_KW), 10),
       hindiNews:  pick((i) => /[ऀ-ॿ]/.test(i.title), 15),
       orgEvents:  pick((i) => has(i.title.toLowerCase(), ORG_KW), 12),
-      notice: errors.length > (p.rssQueries.length + DIRECT_SITES.length) / 3
-        ? `Some searches failed: ${[...new Set(errors)].slice(0, 2).join(" | ")}` : null,
+      notice: errors.length > 0
+        ? `${errors.length} of ${p.rssQueries.length + DIRECT_SITES.length * (p.feedTerms || []).length} searches failed: ${[...new Set(errors)].slice(0, 3).join(" | ")}` : null,
       stats: {
         rssQueries: p.rssQueries.length, directSiteSearches: DIRECT_SITES.length * (p.feedTerms || []).length,
         rssItems: rss.length, dailyItems: daily.length, afterNameFilter: matched.length, uniqueItems: unique.length,
