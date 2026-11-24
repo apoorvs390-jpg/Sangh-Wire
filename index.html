@@ -148,7 +148,7 @@ function render(key,data){
   if(data.error){el.innerHTML=`<div class="status">Error: ${esc(data.error)}</div>`;return;}
   const notice=data.notice?`<div class="status" style="color:#b5470f;padding:10px 16px;font-size:10px">⚠ ${esc(data.notice)}</div>`:'';
   const st=data.stats||{};
-  const srcLine=st.sourcesSeen?`<div class="status" style="padding:4px 16px 8px;font-size:9.5px;opacity:.75;text-align:left">Searched ${st.rssQueries+(st.directSiteSearches||0)} · found ${st.rssItems+st.dailyItems} items · kept ${st.afterNameFilter} · sites returning results: ${st.sourcesSeen.length?st.sourcesSeen.slice(0,12).map(x=>esc(x[0])+' '+x[1]).join(', '):'none'}</div>`:'';
+  const srcLine=st.sourcesSeen?`<div class="status" style="padding:4px 16px 8px;font-size:9.5px;opacity:.75;text-align:left">Searches finished ${st.finished!=null?st.finished+"/"+st.totalSearches:st.rssQueries} · found ${st.rssItems+st.dailyItems} items · kept ${st.afterNameFilter} · sites returning results: ${st.sourcesSeen.length?st.sourcesSeen.slice(0,12).map(x=>esc(x[0])+' '+x[1]).join(', '):'none'}</div>`:'';
   const an=data.allNews||[];
   const sp=data.speeches||[];
   const pr=data.programs||[];
@@ -172,7 +172,7 @@ fetch('/auth/status').then(r=>r.ok?r.json():null).then(j=>{if(j&&(j.admin||!j.ad
 async function load(){
   const btn=document.getElementById('btn');
   btn.disabled=true;btn.textContent='⟳  Searching…';
-  document.getElementById('lu').textContent='Searching 40+ sources (10-20 seconds)…';
+  document.getElementById('lu').textContent='Searching 40+ sources (can take up to 30 seconds)…';
   ['bhagwat','hosabale'].forEach(k=>{
     document.getElementById('b-'+k).innerHTML=
       '<div class="status"><div class="loader"><i></i><i></i><i></i></div><br>Searching last 7 days across 40+ sources…<br><span style="font-size:9.5px;opacity:.6">WSJ · NYT · Guardian · FT · Organiser · ANI · NDTV + more</span></div>';
