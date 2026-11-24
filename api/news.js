@@ -117,14 +117,30 @@ async function handler(req) {
     }
   }
 
-  // Collect whatever finished inside the time budget (prevents timeouts)
-  async function runQueries(queries, errors, siteTerms = []) {
+  // Run searches in small batches (Google throttles big bursts) inside a time budget.
+  // Vercel allows 30s for this function (see vercel.json); Netlify's default is 10s, so keep it short there.
+  const BUDGET_MS = process.env.VERCEL ? 22000 : 8500;
+  const POOL = 8;
+  async function runQueries(queries, errors, siteTerms = [], prog = {}) {
     const collected = [];
-    const jobs = queries.map(({ q, hl, trust }) =>
-      searchRss(q, hl, errors, !!trust).then((r) => { collected.push(...r); }));
+    const tasks = [];
+    for (const { q, hl, trust } of queries)
+      tasks.push(() => searchRss(q, hl, errors, !!trust).then((r) => { collected.push(...r); }));
     for (const base of DIRECT_SITES) for (const term of siteTerms)
-      jobs.push(searchSite(base, term, errors).then((r) => { collected.push(...r); }));
-    await Promise.race([Promise.allSettled(jobs), new Promise((res) => setTimeout(res, 8500))]);
+      tasks.push(() => searchSite(base, term, errors).then((r) => { collected.push(...r); }));
+    prog.total = tasks.length; prog.done = 0;
+    const deadline = Date.now() + BUDGET_MS;
+    let next = 0;
+    const worker = async () => {
+      while (next < tasks.length && Date.now() < deadline) { const t = tasks[next++]; await t(); prog.done++; }
+    };
+    let timer;
+    await Promise.race([
+      Promise.allSettled(Array.from({ length: POOL }, worker)),
+      new Promise((res) => { timer = setTimeout(res, BUDGET_MS); }),
+    ]);
+    clearTimeout(timer);
+    if (prog.done < prog.total) errors.push(`${prog.total - prog.done} searches did not finish in time`);
     return collected.slice();
   }
 
@@ -197,7 +213,8 @@ async function handler(req) {
 
   await Promise.all(Object.entries(targets).map(async ([key, p]) => {
     const errors = [];
-    const rss = await runQueries(p.rssQueries, errors, p.feedTerms || []);
+    const prog = {};
+    const rss = await runQueries(p.rssQueries, errors, p.feedTerms || [], prog);
     const daily = ((serp && serp.people && serp.people[key]) || [])
       .filter((i) => i && i.title && isRecent(i.pubDate))
       .map((i) => ({ ...i, ageDays: ageDays(i.pubDate) }));
@@ -217,7 +234,7 @@ async function handler(req) {
       notice: errors.length > 0
         ? `${errors.length} of ${p.rssQueries.length + DIRECT_SITES.length * (p.feedTerms || []).length} searches failed: ${[...new Set(errors)].slice(0, 3).join(" | ")}` : null,
       stats: {
-        rssQueries: p.rssQueries.length, directSiteSearches: DIRECT_SITES.length * (p.feedTerms || []).length,
+        finished: prog.done, totalSearches: prog.total, rssQueries: p.rssQueries.length, directSiteSearches: DIRECT_SITES.length * (p.feedTerms || []).length,
         rssItems: rss.length, dailyItems: daily.length, afterNameFilter: matched.length, uniqueItems: unique.length,
         // open /api/news?person=bhagwat&fresh=1 and look here to see WHY something is missing
         sourcesSeen: Object.entries(raw.reduce((o, i) => { const k = i.source || "?"; o[k] = (o[k] || 0) + 1; return o; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 25),
