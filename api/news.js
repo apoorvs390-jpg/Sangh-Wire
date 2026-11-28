@@ -201,7 +201,8 @@ async function handler(req) {
     // "Sah-Sarkaryavah" / joint general secretary is a different office-bearer, not the Sarkaryavah
     lo = lo.replace(/sah[\s-]*sar[ak]*ary?a?w?ah|sah[\s-]*sarkaryavah|सह[\s-]*सरकार्यवाह|joint general secretary|joint gen\.? sec\w*/g, " ");
     if (p.key === "hosabale" && /sarkarya(v|w)ah|सरकार्यवाह/.test(lo)) return true;
-    if (it.trusted) return true;
+    // NOTE: no "trusted" bypass any more. Every item (Google, Bing, direct site, SerpAPI) must actually
+    // contain the person's name in its headline / snippet / opening text, otherwise it is dropped.
     if (has(lo, p.strong)) return true;
     return p.weak.length > 0 && has(lo, p.weak) && has(lo, p.weakNeeds);
   }
